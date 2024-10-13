@@ -1,0 +1,137 @@
+SERVER-SIDE [Node.js with Express and MySQ]
+
+
+JAVASCRIPT:
+const express = require('express');
+const bodyParser = require('body-parser');
+const mysql = require('mysql');
+const axios = require('axios');
+
+const    app = express();
+app.use(bodyParser.json());
+
+// Database connection
+const connection = mysql.createConnection({
+  host: 'your_database_host',
+  user: 'your_database_user',
+  password: 'your_database_password',
+  database: 'your_database_name'   
+});
+
+// API route for hotel search (using Google Maps API)
+app.get('/hotels', async (req, res) => {
+  const { location } = req.query;
+
+  try {
+    // Call Google Maps API to get nearby hotels
+    const response = await axios.get('https://maps.googleapis.com/maps/api/place/nearbysearch/json', {
+      params: {
+        key: 'your_google_maps_api_key',
+        location,
+        type: 'hotel'
+      }
+    });
+
+    const hotels = response.data.results;
+
+    // Query database for hotel details (if needed)
+    // ...
+
+    res.json(hotels);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Error fetching hotels');
+  }
+});
+
+// Route for making reservations
+app.post('/reservations', (req, res) => {
+  const { customer_name, check_in_date, check_out_date, room_id } = req.body;
+
+  // Validate request data
+  // ...
+
+  // Check room availability
+  // ...
+
+  // Insert reservation into database
+  connection.query('INSERT INTO reservations (customer_name, check_in_date, check_out_date, room_id) VALUES (?, ?, ?, ?)',
+    [customer_name, check_in_date, check_out_date, room_id],
+    (error, results) => {
+      if (error) {
+        console.error(error);
+        res.status(500).send('Error making reservation');
+      } else {
+        res.send('Reservation created successfully');
+      }
+    }
+  );
+});
+
+app.listen(3000, () => {
+  console.log('Server listening on port 3000');
+});
+
+
+CLIENT-SIDE[React]
+
+JAVASCRIPT:
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+
+function App() {
+  const [hotels, setHotels] = useState([]);
+  const [reservationData, setReservationData] = useState({
+    customer_name: '',
+    check_in_date: '',
+    check_out_date: '',
+    room_id: ''
+  });
+
+  useEffect(() => {
+    const fetchHotels = async () => {
+      const response = await axios.get('/hotels', {
+        params: {
+          location: 'your_desired_location'
+        }
+      });
+      setHotels(response.data);
+    };
+    fetchHotels();
+  }, []);
+
+  const handleInputChange = (e) => {
+    setReservationData({
+      ...reservationData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const response = await axios.post('/reservations', reservationData);
+      console.log(response.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  return (
+    <div>
+      <h1>Hotel Booking</h1>
+      <form onSubmit={handleSubmit}>
+        {/* ... input fields for customer name, check-in/out dates, and room selection */}
+        <button type="submit">Make Reservation</button>
+      </form>
+      <ul>
+        {hotels.map((hotel) => (
+          <li key={hotel.id}>{hotel.name}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default App;
